@@ -1,4 +1,6 @@
 #!/bin/bash
+set -o pipefail
+umask 077
 
 ##   Zphisher 	: 	Automated Phishing Tool
 ##   Author 	: 	TAHMID RAYAT 
@@ -104,31 +106,15 @@ MAGENTABG="$(printf '\033[45m')"  CYANBG="$(printf '\033[46m')"  WHITEBG="$(prin
 RESETBG="$(printf '\e[0m\n')"
 
 ## Directories
-BASE_DIR=$(realpath "$(dirname "$BASH_SOURCE")")
+BASE_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
+cd "$BASE_DIR" || exit 1
 
-if [[ ! -d ".server" ]]; then
-	mkdir -p ".server"
-fi
-
-if [[ ! -d "auth" ]]; then
-	mkdir -p "auth"
-fi
-
-if [[ -d ".server/www" ]]; then
-	rm -rf ".server/www"
-	mkdir -p ".server/www"
-else
-	mkdir -p ".server/www"
-fi
+mkdir -p "$BASE_DIR/.server" "$BASE_DIR/auth"
+rm -rf "$BASE_DIR/.server/www"
+mkdir -p "$BASE_DIR/.server/www"
 
 ## Remove logfile
-if [[ -e ".server/.loclx" ]]; then
-	rm -rf ".server/.loclx"
-fi
-
-if [[ -e ".server/.cld.log" ]]; then
-	rm -rf ".server/.cld.log"
-fi
+rm -f "$BASE_DIR/.server/.loclx" "$BASE_DIR/.server/.cld.log"
 
 ## Script termination
 exit_on_signal_SIGINT() {
@@ -155,8 +141,8 @@ reset_color() {
 kill_pid() {
 	check_PID="php cloudflared loclx"
 	for process in ${check_PID}; do
-		if [[ $(pidof ${process}) ]]; then # Check for Process
-			killall ${process} > /dev/null 2>&1 # Kill the Process
+		if [[ $(pidof "$process") ]]; then # Check for Process
+			killall "$process" > /dev/null 2>&1 # Kill the Process
 		fi
 	done
 }
@@ -165,26 +151,31 @@ kill_pid() {
 check_update(){
 	echo -ne "\n${GREEN}[${WHITE}+${GREEN}]${CYAN} Checking for update : "
 	relase_url='https://api.github.com/repos/htr-tech/zphisher/releases/latest'
-	new_version=$(curl -s "${relase_url}" | grep '"tag_name":' | awk -F\" '{print $4}')
+	new_version=$(curl --fail --silent --show-error --location "${relase_url}" |
+		grep '"tag_name":' | awk -F\" '{print $4}')
+	if [[ -z "$new_version" || ! "$new_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+		echo -e "${RED}unable to determine a valid release${WHITE}"
+		return 1
+	fi
 	tarball_url="https://github.com/htr-tech/zphisher/archive/refs/tags/${new_version}.tar.gz"
 
-	if [[ $new_version != $__version__ ]]; then
+	if [[ $new_version != "$__version__" ]]; then
 		echo -ne "${ORANGE}update found\n"${WHITE}
 		sleep 2
 		echo -ne "\n${GREEN}[${WHITE}+${GREEN}]${ORANGE} Downloading Update..."
-		pushd "$HOME" > /dev/null 2>&1
-		curl --silent --insecure --fail --retry-connrefused \
-		--retry 3 --retry-delay 2 --location --output ".zphisher.tar.gz" "${tarball_url}"
-
-		if [[ -e ".zphisher.tar.gz" ]]; then
-			tar -xf .zphisher.tar.gz -C "$BASE_DIR" --strip-components 1 > /dev/null 2>&1
-			[ $? -ne 0 ] && { echo -e "\n\n${RED}[${WHITE}!${RED}]${RED} Error occured while extracting."; reset_color; exit 1; }
-			rm -f .zphisher.tar.gz
-			popd > /dev/null 2>&1
+		update_archive=$(mktemp "$BASE_DIR/.server/update.XXXXXX.tar.gz")
+		if curl --silent --show-error --fail --retry 3 --retry-delay 2 \
+			--location --output "$update_archive" "${tarball_url}" &&
+			tar -tzf "$update_archive" >/dev/null 2>&1; then
+			update_dir=$(mktemp -d "$BASE_DIR/.server/update.XXXXXX")
+			tar -xzf "$update_archive" -C "$update_dir" --strip-components 1
+			cp -a "$update_dir"/. "$BASE_DIR"/
+			rm -rf "$update_dir" "$update_archive"
 			{ sleep 3; clear; banner_small; }
 			echo -ne "\n${GREEN}[${WHITE}+${GREEN}] Successfully updated! Run zphisher again\n\n"${WHITE}
 			{ reset_color ; exit 1; }
 		else
+			rm -f "$update_archive"
 			echo -e "\n${RED}[${WHITE}!${RED}]${RED} Error occured while downloading."
 			{ reset_color; exit 1; }
 		fi
@@ -279,20 +270,20 @@ download() {
 	if [[ -e "$file" || -e "$output" ]]; then
 		rm -rf "$file" "$output"
 	fi
-	curl --silent --insecure --fail --retry-connrefused \
-		--retry 3 --retry-delay 2 --location --output "${file}" "${url}"
+	curl --silent --show-error --fail --retry 3 --retry-delay 2 \
+		--location --output "${file}" "${url}"
 
 	if [[ -e "$file" ]]; then
 		if [[ ${file#*.} == "zip" ]]; then
-			unzip -qq $file > /dev/null 2>&1
-			mv -f $output .server/$output > /dev/null 2>&1
+			unzip -qq "$file" > /dev/null 2>&1
+			mv -f "$output" "$BASE_DIR/.server/$output" > /dev/null 2>&1
 		elif [[ ${file#*.} == "tgz" ]]; then
-			tar -zxf $file > /dev/null 2>&1
-			mv -f $output .server/$output > /dev/null 2>&1
+			tar -zxf "$file" > /dev/null 2>&1
+			mv -f "$output" "$BASE_DIR/.server/$output" > /dev/null 2>&1
 		else
-			mv -f $file .server/$output > /dev/null 2>&1
+			mv -f "$file" "$BASE_DIR/.server/$output" > /dev/null 2>&1
 		fi
-		chmod +x .server/$output > /dev/null 2>&1
+		chmod +x "$BASE_DIR/.server/$output" > /dev/null 2>&1
 		rm -rf "$file"
 	else
 		echo -e "\n${RED}[${WHITE}!${RED}]${RED} Error occured while downloading ${output}."
