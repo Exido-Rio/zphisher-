@@ -27,6 +27,6 @@ elif [[ $1 == '-i' || $1 == 'ip' ]]; then
 		exit 1
 	}
 else
-	cd $ZPHISHER_ROOT
+	cd "$ZPHISHER_ROOT" || exit 1
 	bash ./zphisher.sh
 fi

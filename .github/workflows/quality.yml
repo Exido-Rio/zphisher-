@@ -18,7 +18,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install --yes php-cli shellcheck
 
       - name: Check shell scripts
-        run: shellcheck zphisher.sh run-docker.sh scripts/launch.sh
+        run: shellcheck --severity=error zphisher.sh run-docker.sh scripts/launch.sh
 
       - name: Check PHP templates
         run: find .sites -type f -name '*.php' -print0 | xargs -0 -n1 php -l

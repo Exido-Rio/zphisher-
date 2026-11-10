@@ -2,7 +2,7 @@
 
 # I'm not that familiar with docker. Send a PR if something is wrong (^.^)
 
-BASE_DIR=$(realpath "$(dirname "$BASH_SOURCE")")
+BASE_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
 cd "$BASE_DIR" || exit 1
 if [[ ! -d "$BASE_DIR/auth" ]]; then
     echo "Creating Auth Directory.."
@@ -11,7 +11,6 @@ fi
 
 CONTAINER="zphisher"
 IMAGE="htrtech/zphisher:latest"
-IMG_MIRROR="ghcr.io/htr-tech/zphisher:latest"
 MOUNT_LOCATION=${BASE_DIR}/auth
 if ! docker ps --all --format "{{.Names}}" | grep -Fxq "$CONTAINER"; then
 	echo "Creating new container..."

